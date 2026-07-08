@@ -42,12 +42,9 @@ def calc_delay_minutes(leg):
     return max(0, round((traffic_secs - normal_secs) / 60))
 
 def extract_major_highways(leg):
-    """Extract all major highway names from route steps."""
     steps = leg.get('steps', [])
     highways = []
     seen = set()
-
-    # Patterns for major highways
     highway_pattern = re.compile(
         r'\b(I-\d+|Interstate\s*\d+|US-\d+|US\s*Route\s*\d+|'
         r'Route\s*\d+|Rte\.?\s*\d+|SR-\d+|NY-\d+|NJ-\d+|'
@@ -55,7 +52,6 @@ def extract_major_highways(leg):
         r'Parkway|Expressway|Freeway|Bypass)\b',
         re.IGNORECASE
     )
-
     for step in steps:
         instruction = strip_html(step.get('html_instructions', ''))
         matches = highway_pattern.findall(instruction)
@@ -64,7 +60,6 @@ def extract_major_highways(leg):
             if normalized.lower() not in seen:
                 seen.add(normalized.lower())
                 highways.append(normalized)
-
     return highways
 
 def find_delay_location(leg):
@@ -91,7 +86,6 @@ def build_message(origin_zip, dest_zip):
         f"{' '.join(origin_zip)} to zip code {' '.join(dest_zip)}."
     )
 
-    # --- Best route WITH tolls ---
     best = routes[0]
     leg = best['legs'][0]
     summary = html.escape(best['summary'])
@@ -99,7 +93,6 @@ def build_message(origin_zip, dest_zip):
     distance = leg['distance']['text']
     delay = calc_delay_minutes(leg)
 
-    # Extract major highways
     highways = extract_major_highways(leg)
     if highways:
         highway_list = ", ".join(highways)
@@ -130,7 +123,6 @@ def build_message(origin_zip, dest_zip):
     for w in best.get('warnings', []):
         parts.append(html.escape(w))
 
-    # --- Best route WITHOUT tolls ---
     if routes_no_toll:
         nt_best = routes_no_toll[0]
         nt_leg = nt_best['legs'][0]
@@ -170,7 +162,6 @@ def build_message(origin_zip, dest_zip):
                 f"with an estimated travel time of {nt_duration}."
             )
 
-    # --- Alternative routes ---
     if len(routes) > 1:
         parts.append("Here are a couple of other options you might consider.")
         for i, route in enumerate(routes[1:3], 2):
@@ -203,6 +194,15 @@ def build_message(origin_zip, dest_zip):
                 )
 
     parts.append("That covers all your route options. Stay safe out there and have a great drive!")
+
+    # --- Fruits on Fifteen Sponsorship ---
+    parts.append(
+        "This traffic report is brought to you by Fruits on Fifteen — "
+        "delivering fresh groceries to the Catskills every Thursday. "
+        "Place your order by Wednesday at 3 P M at 15avefruit.com, "
+        "or call 7-1-8, 4-3-8, 5-7-0-7."
+    )
+
     return " <break time='600ms'/> ".join(parts)
 
 @app.route('/answer', methods=['POST'])
