@@ -123,7 +123,7 @@ def build_message(origin_zip, dest_zip):
     for w in best.get('warnings', []):
         parts.append(html.escape(w))
 
-     if routes_no_toll:
+    if routes_no_toll:  # ← fixed indentation
         nt_best = routes_no_toll[0]
         nt_leg = nt_best['legs'][0]
         nt_summary = html.escape(nt_best['summary'])
@@ -144,7 +144,7 @@ def build_message(origin_zip, dest_zip):
                 parts.append(
                     f"If you'd prefer to avoid tolls, your best option is via {nt_summary}, "
                     f"covering {nt_distance} in about {nt_duration}."
-                 )
+                )
             if nt_delay >= 5:
                 nt_delay_loc = find_delay_location(nt_leg)
                 if nt_delay_loc:
