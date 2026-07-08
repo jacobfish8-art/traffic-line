@@ -59,7 +59,7 @@ def extract_major_highways(leg):
     for step in steps:
         instruction = strip_html(step.get('html_instructions', ''))
         matches = highway_pattern.findall(instruction)
-        for  m in matches:
+        for m in matches:
             normalized = m.strip()
             if normalized.lower() not in seen:
                 seen.add(normalized.lower())
@@ -204,7 +204,8 @@ def build_message(origin_zip, dest_zip):
 
     parts.append("That covers all your route options. Stay safe out there and have a great drive!")
     return " <break time='600ms'/> ".join(parts)
- @app.route('/answer', methods=['POST'])
+
+@app.route('/answer', methods=['POST'])
 def answer():
     response = VoiceResponse()
     gather = Gather(num_digits=5, action='/origin', method='POST', timeout=10)
