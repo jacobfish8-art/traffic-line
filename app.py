@@ -123,7 +123,7 @@ def build_message(origin_zip, dest_zip):
     for w in best.get('warnings', []):
         parts.append(html.escape(w))
 
-    if routes_no_toll:  # ← fixed indentation
+    if routes_no_toll:
         nt_best = routes_no_toll[0]
         nt_leg = nt_best['legs'][0]
         nt_summary = html.escape(nt_best['summary'])
@@ -193,11 +193,14 @@ def build_message(origin_zip, dest_zip):
                     f"approximately {alt_duration}, {delay_str}."
                 )
 
-    # --- Branded sign-off ---
+    # --- Branded sign-off (matching flyer wording exactly) ---
     parts.append(
-        "That covers all your route options. "
-        "Safe travels — and don't forget, order your fresh groceries "
-        "at 15avefruit.com by Wednesday at 3 P M!"
+        "That covers all your route options. Safe travels! "
+        "Place your order by Wednesday at 3:00 PM "
+        "and have it delivered to your door on Thursday. "
+        "Call 7-1-8, 4-3-8, 5-7-0-7, "
+        "email 15avefruit at gmail dot com, "
+        "or visit 15avefruit.com."
     )
 
     return " <break time='600ms'/> ".join(parts)
@@ -208,7 +211,7 @@ def answer():
     gather = Gather(num_digits=5, action='/origin', method='POST', timeout=10)
     gather.say(
         "<speak><prosody rate='95%'>"
-        "Welcome to the 15 Ave Fruits Traffic Hotline — your Catskills travel companion! "
+        "Welcome to the 15 Avenue Fruits Traffic Hotline — your Catskills travel companion! "
         "Go ahead and enter your 5 digit origin zip code."
         "</prosody></speak>",
         voice='Polly.Matthew-Neural'
