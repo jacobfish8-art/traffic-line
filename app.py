@@ -123,7 +123,7 @@ def build_message(origin_zip, dest_zip):
     for w in best.get('warnings', []):
         parts.append(html.escape(w))
 
-    if routes_no_toll:
+     if routes_no_toll:
         nt_best = routes_no_toll[0]
         nt_leg = nt_best['legs'][0]
         nt_summary = html.escape(nt_best['summary'])
@@ -144,7 +144,7 @@ def build_message(origin_zip, dest_zip):
                 parts.append(
                     f"If you'd prefer to avoid tolls, your best option is via {nt_summary}, "
                     f"covering {nt_distance} in about {nt_duration}."
-                )
+                 )
             if nt_delay >= 5:
                 nt_delay_loc = find_delay_location(nt_leg)
                 if nt_delay_loc:
@@ -193,14 +193,11 @@ def build_message(origin_zip, dest_zip):
                     f"approximately {alt_duration}, {delay_str}."
                 )
 
-    parts.append("That covers all your route options. Stay safe out there and have a great drive!")
-
-    # --- Fruits on Fifteen Sponsorship ---
+    # --- Branded sign-off ---
     parts.append(
-        "This traffic report is brought to you by Fruits on Fifteen — "
-        "delivering fresh groceries to the Catskills every Thursday. "
-        "Place your order by Wednesday at 3 P M at 15avefruit.com, "
-        "or call 7-1-8, 4-3-8, 5-7-0-7."
+        "That covers all your route options. "
+        "Safe travels — and don't forget, order your fresh groceries "
+        "at 15avefruit.com by Wednesday at 3 P M!"
     )
 
     return " <break time='600ms'/> ".join(parts)
@@ -210,8 +207,10 @@ def answer():
     response = VoiceResponse()
     gather = Gather(num_digits=5, action='/origin', method='POST', timeout=10)
     gather.say(
-        "<speak><prosody rate='95%'>Hey there, welcome to the Traffic Hotline. "
-        "Go ahead and enter your 5 digit origin zip code.</prosody></speak>",
+        "<speak><prosody rate='95%'>"
+        "Welcome to the 15 Ave Fruits Traffic Hotline — your Catskills travel companion! "
+        "Go ahead and enter your 5 digit origin zip code."
+        "</prosody></speak>",
         voice='Polly.Matthew-Neural'
     )
     response.append(gather)
