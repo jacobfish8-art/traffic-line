@@ -53,6 +53,12 @@ def extract_major_highways(leg):
         re.IGNORECASE
     )
     for step in steps:
+        # ✅ FIXED: Only include highways from steps >= 1 mile (1600 meters)
+        # Filters out short ramps, junctions, and passing mentions
+        step_distance_meters = step.get('distance', {}).get('value', 0)
+        if step_distance_meters < 1600:
+            continue
+
         instruction = strip_html(step.get('html_instructions', ''))
         matches = highway_pattern.findall(instruction)
         for m in matches:
@@ -204,8 +210,7 @@ def build_message(origin_zip, dest_zip):
     )
 
     return " <break time='600ms'/> ".join(parts)
-
-@app.route('/answer', methods=['POST'])
+ @app.route('/answer', methods=['POST'])
 def answer():
     response = VoiceResponse()
     gather = Gather(num_digits=5, action='/origin', method='POST', timeout=10)
