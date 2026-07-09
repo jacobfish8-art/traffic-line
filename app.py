@@ -54,14 +54,12 @@ def extract_major_highways(leg):
     )
     for step in steps:
         # ✅ FIXED: Only include highways from steps >= 1 mile (1600 meters)
-        # Filters out short ramps, junctions, and passing mentions
         step_distance_meters = step.get('distance', {}).get('value', 0)
         if step_distance_meters < 1600:
             continue
-
         instruction = strip_html(step.get('html_instructions', ''))
         matches = highway_pattern.findall(instruction)
-        for m in matches:
+        for  m in matches:
             normalized = m.strip()
             if normalized.lower() not in seen:
                 seen.add(normalized.lower())
@@ -199,7 +197,7 @@ def build_message(origin_zip, dest_zip):
                     f"approximately {alt_duration}, {delay_str}."
                 )
 
-    # --- Branded sign-off (matching flyer wording exactly) ---
+    # --- Branded sign-off ---
     parts.append(
         "That covers all your route options. Safe travels! "
         "Place your order by Wednesday at 3:00 PM "
@@ -210,7 +208,8 @@ def build_message(origin_zip, dest_zip):
     )
 
     return " <break time='600ms'/> ".join(parts)
- @app.route('/answer', methods=['POST'])
+
+@app.route('/answer', methods=['POST'])  # ← fixed, no space
 def answer():
     response = VoiceResponse()
     gather = Gather(num_digits=5, action='/origin', method='POST', timeout=10)
