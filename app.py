@@ -36,7 +36,6 @@ def clean_instruction(instruction):
     cleaned = instruction
     for prefix in prefixes:
         cleaned = re.sub(prefix, '', cleaned, flags=re.IGNORECASE).strip()
-    # Remove anything after slash or parenthesis
     cleaned = re.sub(r'\s*/.*$', '', cleaned).strip()
     cleaned = re.sub(r'\s*\(.*?\)\s*$', '', cleaned).strip()
     return cleaned if len(cleaned) > 3 else instruction
@@ -78,12 +77,10 @@ def extract_major_highways(leg):
 
     highway_pattern = re.compile(
         r'\b('
-        # Numbered interstates and routes
         r'I-\d+[A-Z]?|Interstate\s*\d+[A-Z]?|'
         r'US-\d+|US\s*(?:Highway|Route|Hwy)?\s*\d+|'
         r'NY-\d+|NJ-\d+|CT-\d+|PA-\d+|SR-\d+|'
         r'Route\s*\d+|Rte\.?\s*\d+|'
-        # Named NYC/NJ expressways
         r'FDR\s*Drive|FDR\s*Dr|'
         r'Major\s*Deegan\s*Expwy?|Major\s*Deegan\s*Expressway|'
         r'Cross\s*Bronx\s*Expwy?|Cross\s*Bronx\s*Expressway|'
@@ -95,10 +92,8 @@ def extract_major_highways(leg):
         r'Palisades\s*Interstate\s*Pkwy?|Palisades\s*Pkwy?|'
         r'New\s*York\s*Thruway|NY\s*Thruway|Thruway|'
         r'New\s*Jersey\s*Turnpike|NJ\s*Turnpike|Turnpike|'
-        # Generic expressways/parkways
         r'(?:[\w\s]{2,20}?)\s+(?:Expressway|Expwy)|'
         r'(?:[\w\s]{2,20}?)\s+(?:Parkway|Pkwy)(?!\s+(?:Ave|Road|Street|Blvd))|'
-        # Bridges and tunnels (toll indicators)
         r'(?:[\w\s]{2,25}?)\s+(?:Bridge|Tunnel|Crossing)'
         r')\b',
         re.IGNORECASE
@@ -106,7 +101,6 @@ def extract_major_highways(leg):
 
     for step in steps:
         step_distance_meters = step.get('distance', {}).get('value', 0)
-        # ✅ Lower threshold to 800m to catch FDR Drive and similar
         if step_distance_meters < 800:
             continue
         instruction = strip_html(step.get('html_instructions', ''))
@@ -128,24 +122,19 @@ def find_delay_location(leg):
     if not steps:
         return None
 
-    # ✅ Method 1: Find step with highest speed drop (congestion detection)
-    # Low speed on a highway = traffic jam
-    # Normal highway: 60mph = 26 m/s | Heavy traffic: <15mph = <6.7 m/s
     most_congested = None
     lowest_speed = float('inf')
 
     for step in steps:
         distance = step.get('distance', {}).get('value', 0)
         duration = step.get('duration', {}).get('value', 1)
-        if distance < 1600:  # Only check segments > 1 mile
+        if distance < 1600:
             continue
-        speed = distance / duration  # m/s
-        # Flag as congested if speed < 11 m/s (~25 mph) on what should be highway
+        speed = distance / duration
         if speed < lowest_speed:
             lowest_speed = speed
             most_congested = step
 
-    # ✅ Method 2: Fall back to step with per-step traffic delay if available
     if not most_congested or lowest_speed > 11:
         max_delay = 0
         for step in steps:
@@ -185,10 +174,7 @@ def build_message(origin_zip, dest_zip):
     delay = calc_delay_minutes(leg)
 
     highways = extract_major_highways(leg)
-
-    # Check for toll roads in the highway list
     toll_roads = [h for h in highways if is_toll_road(h)]
-    non_toll = [h for h in highways if not is_toll_road(h)]
 
     if highways:
         highway_list = ", ".join(highways)
@@ -244,7 +230,7 @@ def build_message(origin_zip, dest_zip):
                 parts.append(
                     f"If you'd prefer to avoid tolls, your best option is via {nt_summary}, "
                     f"covering {nt_distance} in about {nt_duration}."
-                 )
+                )
             if nt_delay >= 5:
                 nt_delay_loc = find_delay_location(nt_leg)
                 if nt_delay_loc:
@@ -338,7 +324,7 @@ def result():
     response = VoiceResponse()
     msg = build_message(origin_zip, dest_zip)
     response.say(
-        f"<speak><prosody rate='95%'>{msg}</prosody></seek>",
+        f"<speak><prosody rate='95%'>{msg}</prosody></speak>",
         voice='Polly.Matthew-Neural'
     )
     return str(response)
