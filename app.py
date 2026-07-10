@@ -8,13 +8,40 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 app = Flask(__name__)
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
-# Known toll structures for announcements
+# ✅ Corrected toll structures — only roads where you ALWAYS pay
 TOLL_KEYWORDS = [
-    'verrazzano', 'verrazano', 'battery tunnel', 'holland tunnel',
-    'lincoln tunnel', 'george washington', 'goethals', 'outerbridge',
-    'bayonne bridge', 'garden state parkway', 'new jersey turnpike',
-    'nj turnpike', 'ny thruway', 'new york thruway', 'i-87 north',
-    'ny-17', 'route 17'
+    # NYC Bridges & Tunnels
+    'verrazzano', 'verrazano',
+    'battery tunnel', 'i-478',
+    'holland tunnel',
+    'lincoln tunnel',
+    'battery park tunnel',
+    'midtown tunnel',
+    'queens midtown tunnel',
+    'hugh l. carey tunnel',
+    # NYC Area Bridges
+    'george washington bridge',
+    'goethals bridge',
+    'outerbridge crossing',
+    'bayonne bridge',
+    'mario cuomo bridge', 'tappan zee',
+    'whitestone bridge', 'throgs neck bridge',
+    # NJ Toll Roads
+    'new jersey turnpike', 'nj turnpike',
+    'garden state parkway',
+    'atlantic city expressway',
+    # NY Toll Roads
+    'new york thruway', 'ny thruway',
+    # PA Toll Roads
+    'pennsylvania turnpike', 'pa turnpike',
+    # Southern States
+    'florida turnpike',
+    'delaware memorial bridge',
+    'baltimore harbor tunnel',
+    'fort mchenry tunnel',
+    'chesapeake bay bridge',
+    'dulles greenway',
+    'chesapeake expressway',
 ]
 
 def strip_html(text):
@@ -77,10 +104,18 @@ def extract_major_highways(leg):
 
     highway_pattern = re.compile(
         r'\b('
+        # Numbered interstates and US routes
         r'I-\d+[A-Z]?|Interstate\s*\d+[A-Z]?|'
         r'US-\d+|US\s*(?:Highway|Route|Hwy)?\s*\d+|'
+        # State routes — all 50 states covered
         r'NY-\d+|NJ-\d+|CT-\d+|PA-\d+|SR-\d+|'
+        r'FL-\d+|GA-\d+|SC-\d+|NC-\d+|VA-\d+|'
+        r'MD-\d+|DE-\d+|MA-\d+|RI-\d+|NH-\d+|'
+        r'VT-\d+|ME-\d+|OH-\d+|MI-\d+|IN-\d+|'
+        r'IL-\d+|WI-\d+|MN-\d+|IA-\d+|MO-\d+|'
+        r'TX-\d+|CA-\d+|WA-\d+|OR-\d+|NV-\d+|'
         r'Route\s*\d+|Rte\.?\s*\d+|'
+        # Named NYC/NJ expressways and drives
         r'FDR\s*Drive|FDR\s*Dr|'
         r'Major\s*Deegan\s*Expwy?|Major\s*Deegan\s*Expressway|'
         r'Cross\s*Bronx\s*Expwy?|Cross\s*Bronx\s*Expressway|'
@@ -88,10 +123,14 @@ def extract_major_highways(leg):
         r'Belt\s*Pkwy?|Belt\s*Parkway|'
         r'Harlem\s*River\s*Drive|'
         r'Southern\s*State\s*Pkwy?|Northern\s*State\s*Pkwy?|'
+        r'Meadowbrook\s*Pkwy?|Wantagh\s*Pkwy?|'
         r'Garden\s*State\s*Pkwy?|Garden\s*State\s*Parkway|'
         r'Palisades\s*Interstate\s*Pkwy?|Palisades\s*Pkwy?|'
         r'New\s*York\s*Thruway|NY\s*Thruway|Thruway|'
         r'New\s*Jersey\s*Turnpike|NJ\s*Turnpike|Turnpike|'
+        r'Pennsylvania\s*Turnpike|PA\s*Turnpike|'
+        r'Florida\s*Turnpike|'
+        # Generic expressways/parkways/bridges/tunnels
         r'(?:[\w\s]{2,20}?)\s+(?:Expressway|Expwy)|'
         r'(?:[\w\s]{2,20}?)\s+(?:Parkway|Pkwy)(?!\s+(?:Ave|Road|Street|Blvd))|'
         r'(?:[\w\s]{2,25}?)\s+(?:Bridge|Tunnel|Crossing)'
@@ -113,7 +152,7 @@ def extract_major_highways(leg):
     return highways
 
 def is_toll_road(name):
-    """Check if a road name is a known toll structure"""
+    """Check if a road name is a confirmed toll structure"""
     name_lower = name.lower()
     return any(toll in name_lower for toll in TOLL_KEYWORDS)
 
@@ -185,7 +224,11 @@ def build_message(origin_zip, dest_zip):
         )
         if toll_roads:
             toll_list = ", ".join(toll_roads)
-            msg += f" Note that {toll_list} {'is a' if len(toll_roads) == 1 else 'are'} toll {'road' if len(toll_roads) == 1 else 'roads'}."
+            msg += (
+                f" Please note that "
+                f"{toll_list} "
+                f"{'is a toll road' if len(toll_roads) == 1 else 'are toll roads'}."
+            )
         parts.append(msg)
     else:
         parts.append(
