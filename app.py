@@ -8,7 +8,7 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 app = Flask(__name__)
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
-# ✅ Corrected toll structures — only roads where you ALWAYS pay
+# ✅ Confirmed toll structures only
 TOLL_KEYWORDS = [
     # NYC Bridges & Tunnels
     'verrazzano', 'verrazano',
@@ -85,7 +85,7 @@ def get_directions(origin, destination, avoid_tolls=False):
         print(f"API ({'no tolls' if avoid_tolls else 'with tolls'}): {data['status']}")
         if 'error_message' in data:
             print(f"Error: {data['error_message']}")
-        if data['status'] != 'OK':
+         if data['status'] != 'OK':
             return None
         return data['routes']
     except Exception as e:
@@ -104,10 +104,8 @@ def extract_major_highways(leg):
 
     highway_pattern = re.compile(
         r'\b('
-        # Numbered interstates and US routes
         r'I-\d+[A-Z]?|Interstate\s*\d+[A-Z]?|'
         r'US-\d+|US\s*(?:Highway|Route|Hwy)?\s*\d+|'
-        # State routes — all 50 states covered
         r'NY-\d+|NJ-\d+|CT-\d+|PA-\d+|SR-\d+|'
         r'FL-\d+|GA-\d+|SC-\d+|NC-\d+|VA-\d+|'
         r'MD-\d+|DE-\d+|MA-\d+|RI-\d+|NH-\d+|'
@@ -115,7 +113,6 @@ def extract_major_highways(leg):
         r'IL-\d+|WI-\d+|MN-\d+|IA-\d+|MO-\d+|'
         r'TX-\d+|CA-\d+|WA-\d+|OR-\d+|NV-\d+|'
         r'Route\s*\d+|Rte\.?\s*\d+|'
-        # Named NYC/NJ expressways and drives
         r'FDR\s*Drive|FDR\s*Dr|'
         r'Major\s*Deegan\s*Expwy?|Major\s*Deegan\s*Expressway|'
         r'Cross\s*Bronx\s*Expwy?|Cross\s*Bronx\s*Expressway|'
@@ -130,7 +127,6 @@ def extract_major_highways(leg):
         r'New\s*Jersey\s*Turnpike|NJ\s*Turnpike|Turnpike|'
         r'Pennsylvania\s*Turnpike|PA\s*Turnpike|'
         r'Florida\s*Turnpike|'
-        # Generic expressways/parkways/bridges/tunnels
         r'(?:[\w\s]{2,20}?)\s+(?:Expressway|Expwy)|'
         r'(?:[\w\s]{2,20}?)\s+(?:Parkway|Pkwy)(?!\s+(?:Ave|Road|Street|Blvd))|'
         r'(?:[\w\s]{2,25}?)\s+(?:Bridge|Tunnel|Crossing)'
@@ -218,7 +214,7 @@ def build_message(origin_zip, dest_zip):
     if highways:
         highway_list = ", ".join(highways)
         msg = (
-            f"Your fastest route with tolls is via {summary}, "
+            f"Your fastest route is via {summary}, "
             f"covering {distance} with a current travel time of {duration}. "
             f"This route uses the following major roads: {highway_list}."
         )
@@ -232,7 +228,7 @@ def build_message(origin_zip, dest_zip):
         parts.append(msg)
     else:
         parts.append(
-            f"Your fastest route with tolls is via {summary}, "
+            f"Your fastest route is via {summary}, "
             f"covering {distance} with a current travel time of {duration}."
         )
 
@@ -252,6 +248,7 @@ def build_message(origin_zip, dest_zip):
     for w in best.get('warnings', []):
         parts.append(html.escape(w))
 
+    # ✅ KEY FIX: Verify toll-free route is actually toll-free before announcing
     if routes_no_toll:
         nt_best = routes_no_toll[0]
         nt_leg = nt_best['legs'][0]
@@ -261,39 +258,48 @@ def build_message(origin_zip, dest_zip):
         nt_delay = calc_delay_minutes(nt_leg)
         nt_highways = extract_major_highways(nt_leg)
 
+        # ✅ Check if the "toll-free" route actually contains toll roads
+        nt_toll_roads = [h for h in nt_highways if is_toll_road(h)]
+        route_is_truly_free = len(nt_toll_roads) == 0
+
         if nt_summary != summary:
-            if nt_highways:
-                nt_highway_list = ", ".join(nt_highways)
-                parts.append(
-                    f"If you'd prefer to avoid tolls, your best option is via {nt_summary}, "
-                    f"covering {nt_distance} in about {nt_duration}, "
-                    f"using {nt_highway_list}."
-                )
-            else:
-                parts.append(
-                    f"If you'd prefer to avoid tolls, your best option is via {nt_summary}, "
-                    f"covering {nt_distance} in about {nt_duration}."
-                )
-            if nt_delay >= 5:
-                nt_delay_loc = find_delay_location(nt_leg)
-                if nt_delay_loc:
+            if route_is_truly_free:
+                # ✅ Only announce as toll-free if verified clean
+                if nt_highways:
+                    nt_highway_list = ", ".join(nt_highways)
                     parts.append(
-                        f"There's a {nt_delay} minute slowdown near "
-                        f"{html.escape(nt_delay_loc)} on that route."
+                        f"If you'd prefer to avoid tolls, your best option is via {nt_summary}, "
+                        f"covering {nt_distance} in about {nt_duration}, "
+                        f"using {nt_highway_list}."
                     )
                 else:
-                    parts.append(f"There's about a {nt_delay} minute delay on the toll-free route.")
+                    parts.append(
+                        f"If you'd prefer to avoid tolls, your best option is via {nt_summary}, "
+                        f"covering {nt_distance} in about {nt_duration}."
+                    )
+                if nt_delay >= 5:
+                    nt_delay_loc = find_delay_location(nt_leg)
+                    if nt_delay_loc:
+                        parts.append(
+                            f"There's a {nt_delay} minute slowdown near "
+                            f"{html.escape(nt_delay_loc)} on that route."
+                        )
+                    else:
+                        parts.append(f"There's about a {nt_delay} minute delay on the toll-free route.")
+                else:
+                    parts.append("Traffic is flowing well on the toll-free route.")
             else:
-                parts.append("Traffic is flowing well on the toll-free route.")
+                # ✅ Route still has tolls — skip toll-free announcement entirely
+                pass
         else:
             parts.append(
-                f"Good news — the toll-free route follows the same road via {nt_summary}, "
+                f"The alternate route follows the same road via {nt_summary}, "
                 f"with an estimated travel time of {nt_duration}."
             )
 
     if len(routes) > 1:
         parts.append("Here are a couple of other options you might consider.")
-        for i, route in enumerate(routes[1:3], 2):
+         for i, route in enumerate(routes[1:3], 2):
             alt_leg = route['legs'][0]
             alt_summary = html.escape(route['summary'])
             alt_duration = alt_leg.get('duration_in_traffic', alt_leg['duration'])['text']
@@ -341,7 +347,7 @@ def answer():
     gather.say(
         "<speak><prosody rate='95%'>"
         "Welcome to the 15 Avenue Fruits Traffic Hotline — your Catskills travel companion! "
-        "Go ahead and enter your 5 digit origin zip code."
+        "Go ahead and enter your 5  digit origin zip code."
         "</prosody></speak>",
         voice='Polly.Matthew-Neural'
     )
