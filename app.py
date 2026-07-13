@@ -8,9 +8,7 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 app = Flask(__name__)
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
-# ✅ Confirmed toll structures only
 TOLL_KEYWORDS = [
-    # NYC Bridges & Tunnels
     'verrazzano', 'verrazano',
     'battery tunnel', 'i-478',
     'holland tunnel',
@@ -19,22 +17,17 @@ TOLL_KEYWORDS = [
     'midtown tunnel',
     'queens midtown tunnel',
     'hugh l. carey tunnel',
-    # NYC Area Bridges
     'george washington bridge',
     'goethals bridge',
     'outerbridge crossing',
     'bayonne bridge',
     'mario cuomo bridge', 'tappan zee',
     'whitestone bridge', 'throgs neck bridge',
-    # NJ Toll Roads
     'new jersey turnpike', 'nj turnpike',
     'garden state parkway',
     'atlantic city expressway',
-    # NY Toll Roads
     'new york thruway', 'ny thruway',
-    # PA Toll Roads
     'pennsylvania turnpike', 'pa turnpike',
-    # Southern States
     'florida turnpike',
     'delaware memorial bridge',
     'baltimore harbor tunnel',
@@ -48,7 +41,6 @@ def strip_html(text):
     return re.sub(r'<[^>]+>', '', text).strip()
 
 def clean_instruction(instruction):
-    """Strip navigation verbs — return just the road name"""
     prefixes = [
         r'^Continue\s+(?:straight\s+)?(?:to|on|onto|along)\s+',
         r'^Merge\s+onto\s+',
@@ -85,7 +77,7 @@ def get_directions(origin, destination, avoid_tolls=False):
         print(f"API ({'no tolls' if avoid_tolls else 'with tolls'}): {data['status']}")
         if 'error_message' in data:
             print(f"Error: {data['error_message']}")
-         if data['status'] != 'OK':
+        if data['status'] != 'OK':  # ✅ fixed — no extra space
             return None
         return data['routes']
     except Exception as e:
@@ -148,7 +140,6 @@ def extract_major_highways(leg):
     return highways
 
 def is_toll_road(name):
-    """Check if a road name is a confirmed toll structure"""
     name_lower = name.lower()
     return any(toll in name_lower for toll in TOLL_KEYWORDS)
 
@@ -176,7 +167,7 @@ def find_delay_location(leg):
             duration_normal = step.get('duration', {}).get('value', 0)
             duration_traffic = step.get('duration_in_traffic', {}).get('value', 0)
             distance = step.get('distance', {}).get('value', 0)
-            if duration_traffic > 0 and distance > 800:
+            if duration_traffic > 0  and distance > 800:
                 delay = duration_traffic - duration_normal
                 if delay > max_delay:
                     max_delay = delay
@@ -248,7 +239,6 @@ def build_message(origin_zip, dest_zip):
     for w in best.get('warnings', []):
         parts.append(html.escape(w))
 
-    # ✅ KEY FIX: Verify toll-free route is actually toll-free before announcing
     if routes_no_toll:
         nt_best = routes_no_toll[0]
         nt_leg = nt_best['legs'][0]
@@ -258,13 +248,11 @@ def build_message(origin_zip, dest_zip):
         nt_delay = calc_delay_minutes(nt_leg)
         nt_highways = extract_major_highways(nt_leg)
 
-        # ✅ Check if the "toll-free" route actually contains toll roads
         nt_toll_roads = [h for h in nt_highways if is_toll_road(h)]
         route_is_truly_free = len(nt_toll_roads) == 0
 
         if nt_summary != summary:
             if route_is_truly_free:
-                # ✅ Only announce as toll-free if verified clean
                 if nt_highways:
                     nt_highway_list = ", ".join(nt_highways)
                     parts.append(
@@ -289,8 +277,7 @@ def build_message(origin_zip, dest_zip):
                 else:
                     parts.append("Traffic is flowing well on the toll-free route.")
             else:
-                # ✅ Route still has tolls — skip toll-free announcement entirely
-                pass
+                pass  # ✅ Route still has tolls — skip announcement entirely
         else:
             parts.append(
                 f"The alternate route follows the same road via {nt_summary}, "
@@ -299,7 +286,7 @@ def build_message(origin_zip, dest_zip):
 
     if len(routes) > 1:
         parts.append("Here are a couple of other options you might consider.")
-         for i, route in enumerate(routes[1:3], 2):
+        for i, route in enumerate(routes[1:3], 2):  # ✅ fixed — no extra space
             alt_leg = route['legs'][0]
             alt_summary = html.escape(route['summary'])
             alt_duration = alt_leg.get('duration_in_traffic', alt_leg['duration'])['text']
@@ -328,7 +315,6 @@ def build_message(origin_zip, dest_zip):
                     f"approximately {alt_duration}, {delay_str}."
                 )
 
-    # --- Branded sign-off ---
     parts.append(
         "That covers all your route options. Safe travels! "
         "Place your order by Wednesday at 3:00 PM "
@@ -347,7 +333,7 @@ def answer():
     gather.say(
         "<speak><prosody rate='95%'>"
         "Welcome to the 15 Avenue Fruits Traffic Hotline — your Catskills travel companion! "
-        "Go ahead and enter your 5  digit origin zip code."
+        "Go ahead and enter your 5 digit origin zip code."
         "</prosody></speak>",
         voice='Polly.Matthew-Neural'
     )
